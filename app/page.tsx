@@ -7,7 +7,6 @@ import {
   AlertCircle,
   Search,
   Loader2,
-  ExternalLink,
 } from "lucide-react";
 import type { EnrichedLead, RefreshSummary } from "@/types/lead";
 
@@ -27,12 +26,12 @@ export default function Dashboard() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Filters
   const [searchQuery, setSearchQuery] = useState("");
   const [sourceFilter, setSourceFilter] = useState<SourceFilter>("all");
   const [stageFilter, setStageFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [automationFilter, setAutomationFilter] = useState<AutomationFilter>("all");
+  const [automationFilter, setAutomationFilter] =
+    useState<AutomationFilter>("all");
 
   async function loadLeads() {
     setLoading(true);
@@ -80,12 +79,11 @@ export default function Dashboard() {
       });
       if (!res.ok) return;
       const data = await res.json();
-      // Patch the single lead in place rather than reloading the whole list.
       setLeads((curr) =>
         curr.map((l) => (l.leadID === leadID ? data.lead : l))
       );
     } catch {
-      // Silently ignore — user can hit refresh again.
+      // silent
     }
   }
 
@@ -93,7 +91,6 @@ export default function Dashboard() {
     loadLeads();
   }, []);
 
-  // Distinct values for stage / status filters, derived from data.
   const stageOptions = useMemo(() => {
     const set = new Set(leads.map((l) => l.stage).filter(Boolean));
     return ["all", ...Array.from(set).sort()];
@@ -104,7 +101,6 @@ export default function Dashboard() {
     return ["all", ...Array.from(set).sort()];
   }, [leads]);
 
-  // Apply all filters.
   const filteredLeads = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
     return leads.filter((l) => {
@@ -112,10 +108,7 @@ export default function Dashboard() {
         const src = (l.source ?? "").toLowerCase();
         if (sourceFilter === "whatsapp" && src !== "whatsapp") return false;
         if (sourceFilter === "email" && src !== "email") return false;
-        if (
-          sourceFilter === "other" &&
-          (src === "whatsapp" || src === "email")
-        )
+        if (sourceFilter === "other" && (src === "whatsapp" || src === "email"))
           return false;
       }
 
@@ -143,9 +136,15 @@ export default function Dashboard() {
 
       return true;
     });
-  }, [leads, searchQuery, sourceFilter, stageFilter, statusFilter, automationFilter]);
+  }, [
+    leads,
+    searchQuery,
+    sourceFilter,
+    stageFilter,
+    statusFilter,
+    automationFilter,
+  ]);
 
-  // Summary counts (always over the full set, not filtered).
   const summary = useMemo(() => {
     const total = leads.length;
     const whatsapp = leads.filter(
@@ -154,33 +153,37 @@ export default function Dashboard() {
     const email = leads.filter(
       (l) => (l.source ?? "").toLowerCase() === "email"
     ).length;
-    const byLevel: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 };
-    let untagged = 0;
-    let errored = 0;
+    const byLevel: Record<number, number> = {
+      1: 0,
+      2: 0,
+      3: 0,
+      4: 0,
+      5: 0,
+      6: 0,
+    };
     for (const l of leads) {
       if (l.automationLevel) byLevel[l.automationLevel]++;
-      else untagged++;
-      if (l.enrichmentError) errored++;
     }
-    return { total, whatsapp, email, byLevel, untagged, errored };
+    return { total, whatsapp, email, byLevel };
   }, [leads]);
 
   return (
-    <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
-      <header className="mb-6 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+    <main className="main">
+      <header className="header">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-slate-900">
+          <h1 className="title">
             Campaign — Bh-Leasing-City-Tower-DIFC-2026
           </h1>
-          <p className="text-sm text-slate-500 mt-1">
+          <p className="subtitle">
             {lastRefresh ? (
               <>
                 Last refresh:{" "}
-                <span className="font-medium text-slate-700">
+                <strong>
                   {new Date(lastRefresh.finishedAt).toLocaleString()}
-                </span>{" "}
+                </strong>{" "}
                 · {lastRefresh.total} leads · {lastRefresh.enriched} tagged ·{" "}
-                {lastRefresh.errored} errors · {Math.round(lastRefresh.durationMs / 1000)}s
+                {lastRefresh.errored} errors ·{" "}
+                {Math.round(lastRefresh.durationMs / 1000)}s
               </>
             ) : (
               "No refresh yet"
@@ -190,26 +193,25 @@ export default function Dashboard() {
         <button
           onClick={refreshAll}
           disabled={refreshing}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-slate-900 text-white text-sm font-medium hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="btn-primary"
         >
           {refreshing ? (
-            <Loader2 className="w-4 h-4 animate-spin" />
+            <Loader2 className="spin" />
           ) : (
-            <RefreshCw className="w-4 h-4" />
+            <RefreshCw />
           )}
           Refresh all
         </button>
       </header>
 
       {error && (
-        <div className="mb-4 rounded-md bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-800 flex items-start gap-2">
-          <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+        <div className="error-banner">
+          <AlertCircle />
           <span>{error}</span>
         </div>
       )}
 
-      {/* Summary strip */}
-      <section className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-9 gap-2 mb-6">
+      <section className="summary">
         <SummaryCard label="Total" value={summary.total} accent="slate" />
         <SummaryCard label="WhatsApp" value={summary.whatsapp} accent="green" />
         <SummaryCard label="Email" value={summary.email} accent="blue" />
@@ -223,16 +225,15 @@ export default function Dashboard() {
         ))}
       </section>
 
-      {/* Filters */}
-      <section className="mb-4 flex flex-wrap items-center gap-2">
-        <div className="relative flex-1 min-w-[200px]">
-          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+      <section className="filters">
+        <div className="search-wrap">
+          <Search className="search-icon" />
           <input
             type="text"
             placeholder="Search name, phone, or lead ID…"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-3 py-2 text-sm rounded-md border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-slate-300"
+            className="search-input"
           />
         </div>
 
@@ -256,7 +257,10 @@ export default function Dashboard() {
         <FilterSelect
           value={statusFilter}
           onChange={setStatusFilter}
-          options={statusOptions.map((o) => [o, o === "all" ? "All statuses" : o])}
+          options={statusOptions.map((o) => [
+            o,
+            o === "all" ? "All statuses" : o,
+          ])}
         />
 
         <FilterSelect
@@ -274,44 +278,47 @@ export default function Dashboard() {
           ]}
         />
 
-        <span className="text-sm text-slate-500 ml-auto">
+        <span className="filter-count">
           {filteredLeads.length} of {leads.length}
         </span>
       </section>
 
-      {/* Table */}
-      <section className="bg-white rounded-md border border-slate-200 overflow-hidden">
+      <section className="table-wrap">
         {loading ? (
-          <div className="p-12 flex items-center justify-center text-slate-500">
-            <Loader2 className="w-5 h-5 animate-spin mr-2" />
+          <div className="table-loading">
+            <Loader2 className="spin" />
             Loading…
           </div>
         ) : filteredLeads.length === 0 ? (
-          <div className="p-12 text-center text-slate-500 text-sm">
+          <div className="table-empty">
             {leads.length === 0
               ? 'No data yet. Click "Refresh all" to populate the cache.'
               : "No leads match the current filters."}
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-slate-50 text-slate-600 text-xs uppercase tracking-wide">
+          <div className="table-scroll">
+            <table>
+              <thead>
                 <tr>
-                  <th className="text-left font-medium px-4 py-2">Lead ID</th>
-                  <th className="text-left font-medium px-4 py-2">Name</th>
-                  <th className="text-left font-medium px-4 py-2">Phone</th>
-                  <th className="text-left font-medium px-4 py-2">Source</th>
-                  <th className="text-left font-medium px-4 py-2">Stage</th>
-                  <th className="text-left font-medium px-4 py-2">Status</th>
-                  <th className="text-left font-medium px-4 py-2">Automation</th>
-                  <th className="text-left font-medium px-4 py-2">Created</th>
-                  <th className="text-left font-medium px-4 py-2">Synced</th>
-                  <th className="text-right font-medium px-4 py-2"></th>
+                  <th>Lead ID</th>
+                  <th>Name</th>
+                  <th>Phone</th>
+                  <th>Source</th>
+                  <th>Stage</th>
+                  <th>Status</th>
+                  <th>Automation</th>
+                  <th>Created</th>
+                  <th>Synced</th>
+                  <th className="right"></th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody>
                 {filteredLeads.map((lead) => (
-                  <LeadRow key={lead.leadID} lead={lead} onRefresh={refreshOne} />
+                  <LeadRow
+                    key={lead.leadID}
+                    lead={lead}
+                    onRefresh={refreshOne}
+                  />
                 ))}
               </tbody>
             </table>
@@ -331,16 +338,10 @@ function SummaryCard({
   value: number;
   accent: "slate" | "green" | "blue" | "violet";
 }) {
-  const accents = {
-    slate: "bg-slate-50 border-slate-200 text-slate-700",
-    green: "bg-emerald-50 border-emerald-200 text-emerald-800",
-    blue: "bg-sky-50 border-sky-200 text-sky-800",
-    violet: "bg-violet-50 border-violet-200 text-violet-800",
-  };
   return (
-    <div className={`rounded-md border px-3 py-2 ${accents[accent]}`}>
-      <div className="text-xs font-medium opacity-80">{label}</div>
-      <div className="text-xl font-semibold tabular-nums">{value}</div>
+    <div className={`card card-${accent}`}>
+      <div className="card-label">{label}</div>
+      <div className="card-value">{value}</div>
     </div>
   );
 }
@@ -358,7 +359,7 @@ function FilterSelect({
     <select
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      className="px-3 py-2 text-sm rounded-md border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-slate-300"
+      className="filter-select"
     >
       {options.map(([v, label]) => (
         <option key={v} value={v}>
@@ -377,7 +378,6 @@ function LeadRow({
   onRefresh: (leadID: string) => void;
 }) {
   const [refreshing, setRefreshing] = useState(false);
-  const source = (lead.source ?? "").toLowerCase();
 
   async function handleRefresh() {
     setRefreshing(true);
@@ -386,52 +386,44 @@ function LeadRow({
   }
 
   return (
-    <tr className="hover:bg-slate-50">
-      <td className="px-4 py-3 font-mono text-xs text-slate-600">{lead.leadID}</td>
-      <td className="px-4 py-3">{lead.customerDetails?.fullName ?? "—"}</td>
-      <td className="px-4 py-3 font-mono text-xs">
-        {lead.customerDetails?.phoneNumber ?? "—"}
-      </td>
-      <td className="px-4 py-3">
+    <tr>
+      <td className="mono">{lead.leadID}</td>
+      <td>{lead.customerDetails?.fullName ?? "—"}</td>
+      <td className="mono">{lead.customerDetails?.phoneNumber ?? "—"}</td>
+      <td>
         <SourceBadge source={lead.source} />
       </td>
-      <td className="px-4 py-3">
-        <span className="text-xs px-2 py-0.5 rounded bg-slate-100 text-slate-700">
-          {lead.stage}
-        </span>
+      <td>
+        <span className="badge badge-stage">{lead.stage}</span>
       </td>
-      <td className="px-4 py-3">
+      <td>
         <span
-          className={`text-xs px-2 py-0.5 rounded ${
+          className={`badge ${
             lead.status === "Open"
-              ? "bg-amber-100 text-amber-800"
-              : "bg-slate-100 text-slate-600"
+              ? "badge-status-open"
+              : "badge-status-closed"
           }`}
         >
           {lead.status}
         </span>
       </td>
-      <td className="px-4 py-3">
+      <td>
         <AutomationBadge lead={lead} />
       </td>
-      <td className="px-4 py-3 text-xs text-slate-500">
+      <td className="muted">
         {new Date(lead.createdAt).toLocaleDateString()}
       </td>
-      <td className="px-4 py-3 text-xs text-slate-500">
+      <td className="muted">
         {lead.fetchedAt ? new Date(lead.fetchedAt).toLocaleTimeString() : "—"}
       </td>
-      <td className="px-4 py-3 text-right">
+      <td className="right">
         <button
           onClick={handleRefresh}
           disabled={refreshing}
-          className="p-1 text-slate-400 hover:text-slate-700 disabled:opacity-50"
+          className="icon-btn"
           title="Refresh this lead"
         >
-          {refreshing ? (
-            <Loader2 className="w-4 h-4 animate-spin" />
-          ) : (
-            <RefreshCw className="w-4 h-4" />
-          )}
+          {refreshing ? <Loader2 className="spin" /> : <RefreshCw />}
         </button>
       </td>
     </tr>
@@ -441,47 +433,32 @@ function LeadRow({
 function SourceBadge({ source }: { source: string | null }) {
   const s = (source ?? "").toLowerCase();
   if (s === "whatsapp") {
-    return (
-      <span className="text-xs px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-medium">
-        WhatsApp
-      </span>
-    );
+    return <span className="badge badge-source-whatsapp">WhatsApp</span>;
   }
   if (s === "email") {
-    return (
-      <span className="text-xs px-2 py-0.5 rounded bg-sky-100 text-sky-800 font-medium">
-        Email
-      </span>
-    );
+    return <span className="badge badge-source-email">Email</span>;
   }
-  return (
-    <span className="text-xs px-2 py-0.5 rounded bg-slate-100 text-slate-500">
-      {source ?? "—"}
-    </span>
-  );
+  return <span className="badge badge-source-other">{source ?? "—"}</span>;
 }
 
 function AutomationBadge({ lead }: { lead: EnrichedLead }) {
   if (lead.automationTag) {
     return (
-      <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded bg-violet-100 text-violet-800 font-medium">
-        <CheckCircle2 className="w-3 h-3" />
+      <span className="badge badge-automation">
+        <CheckCircle2 />
         {lead.automationTag}
       </span>
     );
   }
   if (lead.enrichmentError) {
     return (
-      <span
-        className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded bg-rose-50 text-rose-700"
-        title={lead.enrichmentError}
-      >
-        <AlertCircle className="w-3 h-3" />
+      <span className="badge badge-error" title={lead.enrichmentError}>
+        <AlertCircle />
         {lead.enrichmentError.length > 24
           ? lead.enrichmentError.slice(0, 24) + "…"
           : lead.enrichmentError}
       </span>
     );
   }
-  return <span className="text-xs text-slate-400">—</span>;
+  return <span className="dash">—</span>;
 }
